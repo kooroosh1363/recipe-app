@@ -1,5 +1,5 @@
-import Veggie from "../components/Veggie";
-import Popular from "../components/Popular";
+import Veggie from "../components/veggie/Veggie";
+import Popular from "../components/popular/Popular";
 
 
 
