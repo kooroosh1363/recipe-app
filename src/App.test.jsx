@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 vi.mock("./services/recipe-client", () => ({
@@ -15,9 +15,10 @@ vi.mock("./services/recipe-client", () => ({
 }));
 
 describe("RecipeRelay", () => {
-  it("loads recipes and mirrors search into the URL", async () => {
+  beforeEach(() => {
     window.history.replaceState(null, "", "/");
-
+  });
+  it("loads recipes and mirrors search into the URL", async () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByText("2 recipes")).toBeInTheDocument());
