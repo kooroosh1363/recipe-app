@@ -110,7 +110,7 @@ export default function App() {
         <div className="results__heading">
           <div>
             <p className="eyebrow">Result stream</p>
-            <h2 id="results-title">{visible.length} recipes</h2>
+            <h2 id="results-title">{visible.length} {visible.length === 1 ? "recipe" : "recipes"}</h2>
           </div>
           <p>Search is mirrored into the URL so the current view can be bookmarked.</p>
         </div>
