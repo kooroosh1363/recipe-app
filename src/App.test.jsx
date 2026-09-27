@@ -25,7 +25,7 @@ describe("RecipeRelay", () => {
     const search = screen.getByRole("searchbox", { name: /search title/i });
     await userEvent.type(search, "lemon");
 
-    expect(screen.getByText("1 recipes")).toBeInTheDocument();
+    expect(screen.getByText("1 recipe")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Lemon Pasta" })).toBeInTheDocument();
     expect(window.location.search).toBe("?q=lemon");
   });
