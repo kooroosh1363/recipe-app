@@ -1,70 +1,195 @@
-# Getting Started with Create React App
+# RecipeRelay — Resilient Recipe Data Client
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+RecipeRelay modernizes the original 2023 React recipe exercise into a focused front-end engineering demo about **reliable client-side data delivery**.
 
-## Available Scripts
+Unlike a typical recipe UI project, the main subject here is not the cards. It is what happens when data is slow, stale, unavailable, retried, superseded, or restored from cache.
 
-In the project directory, you can run:
+## What was wrong with the original project
 
-### `npm start`
+The original repository contained:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Create React App / `react-scripts 5`
+- a temporary `salam` heading
+- an almost-empty Veggie component
+- a nested duplicate `.map()` in Popular that repeated the same recipes
+- direct API fetch with no loading/error/abort handling
+- `console.log` in the UI path
+- many dependencies that were not being used meaningfully
+- CRA boilerplate README
+- no automated tests or CI
+- a committed `.env` file containing an API credential
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+RecipeRelay keeps the original API-learning idea but turns it into a deliberately engineered data client.
 
-### `npm test`
+## Core behavior
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The application demonstrates:
 
-### `npm run build`
+- five-minute cache TTL
+- fresh / stale / miss classification
+- cached fallback
+- deterministic demo fallback
+- one automatic retry for transient failures
+- no retry on aborted requests
+- `AbortController` cancellation
+- superseded refresh requests are cancelled
+- request/data diagnostics shown directly in the UI
+- URL-backed search state
+- responsive loading, empty, and fallback states
+- reduced-motion handling
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Architecture
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```text
+demo-recipes.js
+      │
+      ▼
+recipe-client.js
+      ├── cache read
+      ├── TTL decision
+      ├── optional network request
+      ├── retry policy
+      ├── abort propagation
+      └── cache/demo fallback
+      │
+      ├──────────────┐
+      ▼              ▼
+cache.js        url-state.js
+      │              │
+      └───────┬──────┘
+              ▼
+            App.jsx
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Data decision flow
 
-### `npm run eject`
+```text
+fresh cache?
+  ├─ yes → use cache immediately
+  └─ no
+      ↓
+API key configured?
+  ├─ no → stale cache or demo fallback
+  └─ yes
+      ↓
+network request
+  ├─ success → normalize + cache + render
+  └─ failure → retry once
+                 ├─ success → cache + render
+                 └─ failure → stale cache or demo fallback
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Aborted requests are never retried.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## URL state
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Search is mirrored into the `q` query parameter:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```text
+/recipe-app/?q=vegan
+```
 
-## Learn More
+This makes the current filtered view bookmarkable and keeps state visible instead of hiding it entirely inside React memory.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Security
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+The old repository committed a real API credential in `.env`.
 
-### Code Splitting
+That file has been removed from the maintained branch and replaced by:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```text
+.env.example
+```
 
-### Analyzing the Bundle Size
+However, deleting a credential from the current tree does **not** remove it from Git history. The previously committed key must be considered exposed and should be revoked/rotated.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+For local experimentation:
 
-### Making a Progressive Web App
+```bash
+cp .env.example .env
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Then add your own key:
 
-### Advanced Configuration
+```text
+VITE_SPOONACULAR_API_KEY=your_own_key
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Important: Vite `VITE_*` values are embedded in browser code. They are not secrets. A production integration requiring a private API key should use a backend proxy.
 
-### Deployment
+## Local development
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Requirements:
 
-### `npm run build` fails to minify
+- Node.js 20+
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Run:
+
+```bash
+npm install
+npm run dev
+```
+
+Vite normally serves the app at:
+
+```text
+http://localhost:5173
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+The suite verifies:
+
+- fresh/stale/miss cache decisions
+- cache serialization
+- query-string read/write behavior
+- search across title, summary, and tags
+- retry after transient failure
+- no retry after abort
+- initial recipe loading
+- URL synchronization during search
+- manual refresh behavior
+
+## Production build
+
+```bash
+npm run build
+```
+
+The optimized site is written to `dist/`.
+
+## CI
+
+Every pull request and push to `master` runs:
+
+```text
+npm install
+   ↓
+Vitest
+   ↓
+Vite production build
+```
+
+## GitHub Pages
+
+A manual deployment workflow is included.
+
+Enable once:
+
+**Settings → Pages → Source → GitHub Actions**
+
+Then:
+
+**Actions → Deploy Pages → Run workflow**
+
+## Scope
+
+RecipeRelay is a front-end resilience and data-flow demo. It is not a production recipe service, nutrition product, account system, checkout flow, or secure credential proxy.
+
+## License
+
+No new license terms are introduced by this modernization.
