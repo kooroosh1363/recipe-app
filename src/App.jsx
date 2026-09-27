@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { loadRecipes } from "./services/recipe-client";
 import { filterByQuery, readQuery, writeQuery } from "./lib/url-state";
 
@@ -20,14 +20,20 @@ export default function App() {
   const [freshness, setFreshness] = useState("miss");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const activeRequest = useRef(null);
 
   const load = async () => {
+    activeRequest.current?.abort();
+
     const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true);
     setError("");
 
     try {
       const result = await loadRecipes({ signal: controller.signal });
+      if (controller.signal.aborted) return;
+
       setRecipes(result.recipes);
       setSource(result.source);
       setFreshness(result.freshness);
@@ -35,35 +41,18 @@ export default function App() {
     } catch (requestError) {
       if (requestError.name !== "AbortError") setError(requestError.message);
     } finally {
-      setLoading(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
-
-    return () => controller.abort();
   };
 
   useEffect(() => {
-    let disposed = false;
-    const controller = new AbortController();
-
-    setLoading(true);
-    loadRecipes({ signal: controller.signal })
-      .then((result) => {
-        if (disposed) return;
-        setRecipes(result.recipes);
-        setSource(result.source);
-        setFreshness(result.freshness);
-        setError(result.error || "");
-      })
-      .catch((requestError) => {
-        if (!disposed && requestError.name !== "AbortError") setError(requestError.message);
-      })
-      .finally(() => {
-        if (!disposed) setLoading(false);
-      });
+    load();
 
     return () => {
-      disposed = true;
-      controller.abort();
+      activeRequest.current?.abort();
     };
   }, []);
 
